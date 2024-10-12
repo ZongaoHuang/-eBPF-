@@ -1,0 +1,7 @@
+/.output
+/bootstrap
+/minimal
+/uprobe
+tcpconnlat
+/fentry
+*.o
