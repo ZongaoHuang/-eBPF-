@@ -12,7 +12,7 @@ RUN apt-get install -y libelf-dev
 RUN apt-get install -y curl libssl-dev libcurl4-openssl-dev libcurl4
 RUN apt-get install -y wget
 
-RUN wget https://www.gitlink.org.cn/p4zt3ZfhkI/jyedrqycjc/releases/download/v0.1/agent
+RUN wget https://github.com/ZongaoHuang/-eBPF-/releases/download/v0.1/agent
 RUN wget https://github.com/prometheus/prometheus/releases/download/v2.53.0/prometheus-2.53.0.linux-amd64.tar.gz
 RUN tar -zxvf prometheus-2.53.0.linux-amd64.tar.gz
 RUN chmod +x ./agent
