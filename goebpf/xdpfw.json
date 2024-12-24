@@ -1,0 +1,26 @@
+{
+    "InterfaceName": "lo",
+    "PPS": 1000,
+    "BPS": 1000000,
+    "Ipv4BlacklistTemp": ["10.190.1.1"],
+    "Ipv4BlacklistPerm": ["10.90.5.21", "172.18.133.27"],
+    "BlockFlag":0,
+    "UnBlockTime":6,
+    "SYNPS":50,
+    "UDPPS":500,
+    "ArpFlag":0,
+    "ArpTable": [
+        {
+            "Ip": "172.18.133.27",
+            "Mac": "00:15:5d:24:db:5f"
+        },
+        {
+            "Ip": "10.0.2.15",
+            "Mac": "52:54:00:12:34:56"
+        },
+        {
+            "Ip": "10.12.190.104",
+            "Mac": "08:BF:B8:70:1D:9F"
+        }
+    ]
+}
