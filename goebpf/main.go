@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"os/signal"
 	"strconv"
 	"strings"
 
@@ -160,14 +159,7 @@ func main() {
 	//用于确保在函数返回之前调用xdp.Detach函数
 	defer xdp.Detach()
 
-	//当用户按下Ctrl+C时，程序不会立即终止，而是将中断信号发送到ctrlC通道。
-	//程序可以在适当的时候检查这个通道，以确定是否接收到了中断信号，
-	//并据此执行正常退出操作。
-	ctrlC := make(chan os.Signal, 1)
-	signal.Notify(ctrlC, os.Interrupt)
-
 	fmt.Println("XDP program successfully loaded and attached.")
-	fmt.Println("Press CTRL+C to stop.")
 	fmt.Println()
 
 	//创建一个定时器，每秒触发一次。
@@ -178,205 +170,204 @@ func main() {
 	//defer ticker.Stop()
 
 	// 用户输入通道
-	input := make(chan string)
-
-	// 异步处理用户输入
-	go func() {
-		reader := bufio.NewReader(os.Stdin)
-		for {
-			fmt.Printf("按'e'键修改\n")
-			text, _ := reader.ReadString('\n')
-			input <- text
-		}
-	}()
-
+	reader := bufio.NewReader(os.Stdin)
 	for {
-		select {
-		//case <-ticker.C:
-		// 定时器的触发事件，可以放置一些状态检查或输出
-
-		case text := <-input:
-			// 检查用户是否按下 'e' 键
-			if text == "e\n" {
-				fmt.Printf("1. PPS 2. BPS 3. Ipv4BlacklistTemp 4. Ipv4BlacklistPerm 5. BlockFlag 6. UnBlockTime 7. Quit\n")
-				fmt.Printf("请输入要修改的项:")
-				reader := bufio.NewReader(os.Stdin)
+		fmt.Print("按'e'键修改配置，按'q'键退出程序\n")
+		text, _ := reader.ReadString('\n')
+		text = strings.Trim(text, " \n")
+		if text == "e" || text == "E" {
+			fmt.Printf("1. PPS 2. BPS 3. Ipv4BlacklistTemp 4. Ipv4BlacklistPerm 5. BlockFlag 6. UnBlockTime 7. Quit")
+			fmt.Printf("\n请输入要修改的项:")
+			newInput, _ := reader.ReadString('\n')
+			newInput = strings.Trim(newInput, " \n")
+			num, err := strconv.Atoi(newInput)
+			fmt.Printf("您选择修改的项是: %d\n", num)
+			if err != nil {
+				fmt.Println("输入格式错误")
+				continue
+			}
+			if num == 1 {
+				fmt.Printf("当前PPS是%d，要修改吗？(y/n)", config.PPS)
 				newInput, _ := reader.ReadString('\n')
-				num, err := strconv.Atoi(newInput)
-				if err != nil {
-					fmt.Println("输入格式错误")
-					continue
+				if newInput == "y\n" || newInput == "Y\n" {
+					fmt.Print("请输入新的PPS: ")
+					newInput, _ := reader.ReadString('\n')
+					newInput = strings.TrimSpace(newInput)
+					newPPS, err := strconv.Atoi(newInput)
+					if err != nil {
+						fmt.Println("输入错误")
+						continue
+					}
+					config.PPS = uint64(newPPS)
+					err2 := config_pps.Insert(1, config.PPS)
+					if err2 != nil {
+						fatalError("Unable to Insert into eBPF map: %v", err2)
+					}
+					fmt.Print("修改成功\n")
+					/*
+						value, err := config_pps.Lookup(1)
+						if err != nil {
+							fatalError("Unable to Lookup into eBPF map: %v", err)
+						}
+						fmt.Printf("NEW_PPS: %d\n", value)
+					*/
 				}
-				if num == 1 {
-					fmt.Printf("当前PPS是%d，要修改吗？(y/n)", config.PPS)
-					newInput, _ := reader.ReadString('\n')
-					if newInput == "y\n" || newInput == "Y\n" {
-						fmt.Print("请输入新的PPS: ")
-						newInput, _ := reader.ReadString('\n')
-						newPPS, err := strconv.Atoi(newInput)
-						if err != nil {
-							fmt.Println("输入错误")
-							continue
-						}
-						config.PPS = uint64(newPPS)
-						err2 := config_pps.Insert(1, config.PPS)
-						if err2 != nil {
-							fatalError("Unable to Insert into eBPF map: %v", err2)
-						}
-					}
-				} else if num == 2 {
-					fmt.Printf("当前BPS是%d，要修改吗？(y/n)", config.BPS)
-					newInput, _ := reader.ReadString('\n')
-					if newInput == "y\n" || newInput == "Y\n" {
-						fmt.Print("请输入新的BPS: ")
-						newInput, _ := reader.ReadString('\n')
-						newBPS, err := strconv.Atoi(newInput)
-						if err != nil {
-							fmt.Println("输入错误")
-							continue
-						}
-						config.BPS = uint64(newBPS)
-						err2 := config_bps.Insert(2, config.BPS)
-						if err2 != nil {
-							fatalError("Unable to Insert into eBPF map: %v", err2)
-						}
-					}
-				} else if num == 3 {
-					fmt.Printf("当前Ipv4BlacklistTemp(临时ip地址黑名单)的内容是:\n")
-					firstKey, err1 := ip_blacklist_t.GetNextKey(nil)
-					if err1 != nil {
-						fmt.Printf("空\n")
-					}
-					currentKey := firstKey
-					cnt := 0
-					for currentKey != nil {
-						// 使用当前键获取下一个键
-						nextKey, err_2 := ip_blacklist_t.GetNextKey(currentKey)
-						fmt.Printf("%d:%d(十进制)\t%x(十六进制)", cnt, currentKey, currentKey)
-						if err_2 != nil {
-							break
-						}
-						// 更新当前键为下一个键，继续遍历
-						currentKey = nextKey
-					}
-					fmt.Printf("请输入要删除的ip地址(点分十进制,形如192.168.1.1)(多个ip地址间以空格分隔)(不输入请直接按回车):")
-					newInput2, _ := reader.ReadString('\n')
-					newInput2 = strings.TrimSpace(newInput2)
-					newIpList2 := strings.Split(newInput2, " ")
-					for _, s := range newIpList2 {
-						ipu32, erri := ipToUint32(s)
-						if erri != nil {
-							fmt.Println(erri)
-							continue
-						}
-						err2 := ip_blacklist_t.Delete(ipu32)
-						if err2 != nil {
-							fatalError("Unable to Delete from eBPF map: %v", err)
-						}
-					}
-					fmt.Printf("请输入要添加的ip地址(点分十进制,形如192.168.1.1)(多个ip地址间以空格分隔)(不输入请直接按回车):")
+			} else if num == 2 {
+				fmt.Printf("当前BPS是%d，要修改吗？(y/n)", config.BPS)
+				newInput, _ := reader.ReadString('\n')
+				if newInput == "y\n" || newInput == "Y\n" {
+					fmt.Print("请输入新的BPS: ")
 					newInput, _ := reader.ReadString('\n')
 					newInput = strings.TrimSpace(newInput)
-					newIpList := strings.Split(newInput, " ")
-					for _, s := range newIpList {
-						ipu32, erri := ipToUint32(s)
-						if erri != nil {
-							fmt.Println(erri)
-							continue
-						}
-						err2 := ip_blacklist_t.Insert(ipu32, 1)
-						if err2 != nil {
-							fatalError("Unable to Insert into eBPF map: %v", err)
-						}
+					fmt.Print("newInput: ", newInput)
+					newBPS, err := strconv.Atoi(newInput)
+					if err != nil {
+						fmt.Println("输入错误")
+						continue
 					}
-				} else if num == 4 {
-					fmt.Printf("当前Ipv4BlacklistPerm(永久ip地址黑名单)的内容是:\n")
-					firstKey, err1 := ip_blacklist_p.GetNextKey(nil)
-					if err1 != nil {
-						fmt.Printf("空\n")
+					config.BPS = uint64(newBPS)
+					err2 := config_bps.Insert(2, config.BPS)
+					if err2 != nil {
+						fatalError("Unable to Insert into eBPF map: %v", err2)
 					}
-					currentKey := firstKey
-					cnt := 0
-					for currentKey != nil {
-						// 使用当前键获取下一个键
-						nextKey, err_2 := ip_blacklist_p.GetNextKey(currentKey)
-						fmt.Printf("%d:%d(十进制)\t%x(十六进制)", cnt, currentKey, currentKey)
-						if err_2 != nil {
-							break
-						}
-						// 更新当前键为下一个键，继续遍历
-						currentKey = nextKey
+					fmt.Print("修改成功\n")
+				}
+			} else if num == 3 {
+				fmt.Printf("当前Ipv4BlacklistTemp(临时ip地址黑名单)的内容是:\n")
+				firstKey, err1 := ip_blacklist_t.GetNextKey(nil)
+				if err1 != nil {
+					fmt.Printf("空\n")
+				}
+				currentKey := firstKey
+				cnt := 0
+				for currentKey != nil {
+					// 使用当前键获取下一个键
+					nextKey, err_2 := ip_blacklist_t.GetNextKey(currentKey)
+					fmt.Printf("%d:%d(十进制)\t%x(十六进制)", cnt, currentKey, currentKey)
+					if err_2 != nil {
+						break
 					}
-					fmt.Printf("请输入要删除的ip地址(点分十进制,形如192.168.1.1)(多个ip地址间以空格分隔)(不输入请直接按回车):")
-					newInput2, _ := reader.ReadString('\n')
-					newInput2 = strings.TrimSpace(newInput2)
-					newIpList2 := strings.Split(newInput2, " ")
-					for _, s := range newIpList2 {
-						ipu32, erri := ipToUint32(s)
-						if erri != nil {
-							fmt.Println(erri)
-							continue
-						}
-						err2 := ip_blacklist_p.Delete(ipu32)
-						if err2 != nil {
-							fatalError("Unable to Delete from eBPF map: %v", err)
-						}
+					// 更新当前键为下一个键，继续遍历
+					currentKey = nextKey
+				}
+				fmt.Printf("\n请输入要删除的ip地址(点分十进制,形如192.168.1.1)(多个ip地址间以空格分隔)(不输入请直接按回车):")
+				newInput2, _ := reader.ReadString('\n')
+				newInput2 = strings.TrimSpace(newInput2)
+				newIpList2 := strings.Split(newInput2, " ")
+				for _, s := range newIpList2 {
+					ipu32, erri := ipToUint32(s)
+					if erri != nil {
+						fmt.Println(erri)
+						continue
 					}
-					fmt.Printf("请输入要添加的ip地址(点分十进制,形如192.168.1.1)(多个ip地址间以空格分隔)(不输入请直接按回车):")
+					err2 := ip_blacklist_t.Delete(ipu32)
+					if err2 != nil {
+						fatalError("Unable to Delete from eBPF map: %v", err)
+					}
+				}
+				fmt.Printf("\n请输入要添加的ip地址(点分十进制,形如192.168.1.1)(多个ip地址间以空格分隔)(不输入请直接按回车):")
+				newInput, _ := reader.ReadString('\n')
+				newInput = strings.TrimSpace(newInput)
+				newIpList := strings.Split(newInput, " ")
+				for _, s := range newIpList {
+					ipu32, erri := ipToUint32(s)
+					if erri != nil {
+						fmt.Println(erri)
+						continue
+					}
+					err2 := ip_blacklist_t.Insert(ipu32, 1)
+					if err2 != nil {
+						fatalError("Unable to Insert into eBPF map: %v", err)
+					}
+				}
+				fmt.Print("修改成功\n")
+			} else if num == 4 {
+				fmt.Printf("当前Ipv4BlacklistPerm(永久ip地址黑名单)的内容是:\n")
+				firstKey, err1 := ip_blacklist_p.GetNextKey(nil)
+				if err1 != nil {
+					fmt.Printf("空\n")
+				}
+				currentKey := firstKey
+				cnt := 0
+				for currentKey != nil {
+					// 使用当前键获取下一个键
+					nextKey, err_2 := ip_blacklist_p.GetNextKey(currentKey)
+					fmt.Printf("%d:%d(十进制)\t%x(十六进制)", cnt, currentKey, currentKey)
+					if err_2 != nil {
+						break
+					}
+					// 更新当前键为下一个键，继续遍历
+					currentKey = nextKey
+				}
+				fmt.Printf("\n请输入要删除的ip地址(点分十进制,形如192.168.1.1)(多个ip地址间以空格分隔)(不输入请直接按回车):")
+				newInput2, _ := reader.ReadString('\n')
+				newInput2 = strings.TrimSpace(newInput2)
+				newIpList2 := strings.Split(newInput2, " ")
+				for _, s := range newIpList2 {
+					ipu32, erri := ipToUint32(s)
+					if erri != nil {
+						fmt.Println(erri)
+						continue
+					}
+					err2 := ip_blacklist_p.Delete(ipu32)
+					if err2 != nil {
+						fatalError("Unable to Delete from eBPF map: %v", err)
+					}
+				}
+				fmt.Printf("\n请输入要添加的ip地址(点分十进制,形如192.168.1.1)(多个ip地址间以空格分隔)(不输入请直接按回车):")
+				newInput, _ := reader.ReadString('\n')
+				newInput = strings.TrimSpace(newInput)
+				newIpList := strings.Split(newInput, " ")
+				for _, s := range newIpList {
+					ipu32, erri := ipToUint32(s)
+					if erri != nil {
+						fmt.Println(erri)
+						continue
+					}
+					err2 := ip_blacklist_p.Insert(ipu32, 1)
+					if err2 != nil {
+						fatalError("Unable to Insert into eBPF map: %v", err)
+					}
+				}
+				fmt.Print("修改成功\n")
+			} else if num == 5 {
+				fmt.Printf("当前BlockFlag是%d，要修改吗？(y/n)", config.BlockFlag)
+				newInput, _ := reader.ReadString('\n')
+				if newInput == "y\n" || newInput == "Y\n" {
+					fmt.Print("\n请输入新的BlockFlag: ")
 					newInput, _ := reader.ReadString('\n')
-					newInput = strings.TrimSpace(newInput)
-					newIpList := strings.Split(newInput, " ")
-					for _, s := range newIpList {
-						ipu32, erri := ipToUint32(s)
-						if erri != nil {
-							fmt.Println(erri)
-							continue
-						}
-						err2 := ip_blacklist_p.Insert(ipu32, 1)
-						if err2 != nil {
-							fatalError("Unable to Insert into eBPF map: %v", err)
-						}
+					newBlockFlag, err := strconv.Atoi(newInput)
+					if err != nil {
+						fmt.Println("\n输入错误")
+						continue
 					}
-
-				} else if num == 5 {
-					fmt.Printf("当前BlockFlag是%d，要修改吗？(y/n)", config.BlockFlag)
+					config.BlockFlag = uint64(newBlockFlag)
+					err2 := block_time.Update(3, config.BlockFlag)
+					if err2 != nil {
+						fatalError("Unable to Insert into eBPF map: %v", err2)
+					}
+					fmt.Print("修改成功\n")
+				}
+			} else if num == 6 {
+				fmt.Printf("当前UnBlockTime是%d，要修改吗？(y/n)", config.UnBlockTime)
+				newInput, _ := reader.ReadString('\n')
+				if newInput == "y\n" || newInput == "Y\n" {
+					fmt.Print("请输入新的UnBlockTime: ")
 					newInput, _ := reader.ReadString('\n')
-					if newInput == "y\n" || newInput == "Y\n" {
-						fmt.Print("请输入新的BlockFlag: ")
-						newInput, _ := reader.ReadString('\n')
-						newBlockFlag, err := strconv.Atoi(newInput)
-						if err != nil {
-							fmt.Println("输入错误")
-							continue
-						}
-						config.BlockFlag = uint64(newBlockFlag)
-						err2 := block_time.Update(3, config.BlockFlag)
-						if err2 != nil {
-							fatalError("Unable to Insert into eBPF map: %v", err2)
-						}
+					newUnBlockTime, err := strconv.Atoi(newInput)
+					if err != nil {
+						fmt.Println("输入错误")
+						continue
 					}
-				} else if num == 6 {
-					fmt.Printf("当前UnBlockTime是%d，要修改吗？(y/n)", config.UnBlockTime)
-					newInput, _ := reader.ReadString('\n')
-					if newInput == "y\n" || newInput == "Y\n" {
-						fmt.Print("请输入新的UnBlockTime: ")
-						newInput, _ := reader.ReadString('\n')
-						newUnBlockTime, err := strconv.Atoi(newInput)
-						if err != nil {
-							fmt.Println("输入错误")
-							continue
-						}
-						config.UnBlockTime = uint64(newUnBlockTime)
-						err2 := un_block_time.Update(4, config.UnBlockTime)
-						if err2 != nil {
-							fatalError("Unable to Insert into eBPF map: %v", err2)
-						}
+					config.UnBlockTime = uint64(newUnBlockTime)
+					err2 := un_block_time.Update(4, config.UnBlockTime)
+					if err2 != nil {
+						fatalError("Unable to Insert into eBPF map: %v", err2)
 					}
-				} else {
-					continue
+					fmt.Print("修改成功\n")
 				}
 			}
-		case <-ctrlC:
+		} else if text == "q" || text == "Q" {
 			fmt.Println("\nDetaching program and exit")
 			return
 		}
