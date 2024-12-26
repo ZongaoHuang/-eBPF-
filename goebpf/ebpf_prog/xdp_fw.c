@@ -32,15 +32,15 @@ struct udp_stats{
 
 BPF_MAP_DEF(syn_counter) = {
     .map_type = BPF_MAP_TYPE_LRU_HASH,
-    .key_size = sizeof(__u16),  //端口号
-    .value_size = sizeof(struct syn_stats), 
+    .key_size = sizeof(__u16),
+    .value_size = sizeof(struct syn_stats),
     .max_entries = MAX_RULES,
 };
 BPF_MAP_ADD(syn_counter);
 
 BPF_MAP_DEF(udp_counter) = {
     .map_type = BPF_MAP_TYPE_LRU_HASH,
-    .key_size = sizeof(__u16),  //端口号
+    .key_size = sizeof(__u16),
     .value_size = sizeof(struct udp_stats),
     .max_entries = MAX_RULES,
 };
@@ -48,7 +48,7 @@ BPF_MAP_ADD(udp_counter);
 
 BPF_MAP_DEF(ip_counter) = {
     .map_type = BPF_MAP_TYPE_LRU_HASH,
-    .key_size = sizeof(__u32),  //IP地址
+    .key_size = sizeof(__u32),
     .value_size = sizeof(struct ip_stats),
     .max_entries = MAX_RULES,
 };
@@ -56,7 +56,7 @@ BPF_MAP_ADD(ip_counter);
 
 BPF_MAP_DEF(ip_blacklist_t) = {
     .map_type = BPF_MAP_TYPE_LRU_HASH,
-    .key_size = sizeof(__u32),  //IP地址
+    .key_size = sizeof(__u32),
     .value_size = sizeof(__u32),
     .max_entries = MAX_RULES,
 };
@@ -64,7 +64,7 @@ BPF_MAP_ADD(ip_blacklist_t);
 
 BPF_MAP_DEF(ip_blacklist_p) = {
     .map_type = BPF_MAP_TYPE_LRU_HASH,
-    .key_size = sizeof(__u32),  //IP地址
+    .key_size = sizeof(__u32),
     .value_size = sizeof(__u32),
     .max_entries = MAX_RULES,
 };
@@ -150,7 +150,6 @@ BPF_MAP_DEF(pass_cnt) = {
 };
 BPF_MAP_ADD(pass_cnt);
 
-/*
 BPF_MAP_DEF(wrong_cnt) = {
     .map_type = BPF_MAP_TYPE_LRU_HASH,
     .key_size = sizeof(__u32),  //key = 10
@@ -190,7 +189,6 @@ BPF_MAP_DEF(btime_cnt) = {
     .max_entries = 1,
 };
 BPF_MAP_ADD(btime_cnt);
-*/
 
 struct arp_hdr {
     __u16 hardware_type;      // 硬件类型
@@ -222,19 +220,17 @@ int firewall(struct xdp_md *ctx) {
   struct ethhdr *ether = data;
   __u32 drop_cnt_key=8;
   __u32 pass_cnt_key=9;
-  //__u32 wrong_cnt_key=10;
+  __u32 wrong_cnt_key=10;
   __u64* drop_cnt_value = NULL;
   __u64* pass_cnt_value = NULL;
-  //__u64* wrong_cnt_value = NULL;
+  __u64* wrong_cnt_value = NULL;
   //以太网头部超出边界说明以太网头部不完整，要丢弃
   if (data + sizeof(*ether) > data_end) { 
-    /*
     wrong_cnt_value = bpf_map_lookup_elem(&wrong_cnt, &wrong_cnt_key);
     if (wrong_cnt_value) {
       __u64 new_wrong_cnt_value =*wrong_cnt_value + 1;
       bpf_map_update_elem(&wrong_cnt, &wrong_cnt_key, &new_wrong_cnt_value, BPF_ANY);
     }
-    */
     return XDP_DROP;
   }
 
@@ -247,13 +243,11 @@ int firewall(struct xdp_md *ctx) {
     void* arp_data = data + sizeof(*ether);
     struct arp_hdr *arp = arp_data;
     if (arp_data + sizeof(*arp) > data_end) {
-      /*
       wrong_cnt_value = bpf_map_lookup_elem(&wrong_cnt, &wrong_cnt_key);
       if (wrong_cnt_value) {
         __u64 new_wrong_cnt_value =*wrong_cnt_value + 1;
         bpf_map_update_elem(&wrong_cnt, &wrong_cnt_key, &new_wrong_cnt_value, BPF_ANY);
       }
-      */
       return XDP_DROP;
     }
     __u32 arp_flag_key=7;
@@ -302,13 +296,11 @@ int firewall(struct xdp_md *ctx) {
   ip = data;  
   //检查IPv4头部是否超出数据包的边界
   if (data + sizeof(*ip) > data_end) {
-    /*
     wrong_cnt_value = bpf_map_lookup_elem(&wrong_cnt, &wrong_cnt_key);
     if (wrong_cnt_value) {
       __u64 new_wrong_cnt_value =*wrong_cnt_value + 1;
       bpf_map_update_elem(&wrong_cnt, &wrong_cnt_key, &new_wrong_cnt_value, BPF_ANY);
     }
-    */
     return XDP_DROP;
   }
 
@@ -316,7 +308,7 @@ int firewall(struct xdp_md *ctx) {
   saddr = htonl(saddr); //将主机字节序转换为网络字节序
   __u64 *blocked_perm = NULL;    // Check ip_blacklist_p
   blocked_perm=bpf_map_lookup_elem(&ip_blacklist_p, &saddr);
-  if (blocked_perm) {  //如果在永久ip黑名单中
+  if (blocked_perm) {
     drop_cnt_value = bpf_map_lookup_elem(&drop_cnt, &drop_cnt_key);
     if (drop_cnt_value) {
       __u64 new_drop_cnt_value =*drop_cnt_value + 1;
@@ -332,7 +324,7 @@ int firewall(struct xdp_md *ctx) {
   __u64 now = bpf_ktime_get_ns(); //获取当前的内核时间戳(纳秒)
   __u16 pkt_len = data_end - data;
 
-  if (blocked_temp) { //如果在临时ip黑名单中
+  if (blocked_temp) {
     __u32 block_flag_key=3;
     __u32 unblock_time_key=4;
     __u64 *block_flag_value = bpf_map_lookup_elem(&block_flag, &block_flag_key);
@@ -340,7 +332,7 @@ int firewall(struct xdp_md *ctx) {
     if (block_flag_value==NULL || unblock_time_value==NULL) {
       return XDP_DROP;
     }
-    if (*block_flag_value!=0) { //如果临时黑名单不采用动态增删功能
+    if (*block_flag_value!=0) {
       drop_cnt_value = bpf_map_lookup_elem(&drop_cnt, &drop_cnt_key);
       if (drop_cnt_value) {
         __u64 new_drop_cnt_value =*drop_cnt_value + 1;
@@ -348,17 +340,17 @@ int firewall(struct xdp_md *ctx) {
       }
       return XDP_DROP;
     }
-    if (ip_stats_pointer) { //如果在临时黑名单中，且已经有记录
-      //__u32 now_cnt_key=12;
-      //__u32 next_cnt_key=13;
-      //__u32 btime_cnt_key=14;
-      //__u64 nowtemp=now;
-      //__u64 nexttemp=ip_stats_pointer->next_update;
-      //__u64 btimetemp=(*unblock_time_value) * NANO_TO_SEC;
-      //bpf_map_update_elem(&now_cnt, &now_cnt_key, &nowtemp, BPF_ANY);
-      //bpf_map_update_elem(&next_cnt, &next_cnt_key, &nexttemp, BPF_ANY);
-      //bpf_map_update_elem(&btime_cnt, &btime_cnt_key, &btimetemp, BPF_ANY);
-      if ( now >= ip_stats_pointer->next_update + (*unblock_time_value)*NANO_TO_SEC) {  //如果已经过了封禁时间
+    if (ip_stats_pointer) {
+      __u32 now_cnt_key=12;
+      __u32 next_cnt_key=13;
+      __u32 btime_cnt_key=14;
+      __u64 nowtemp=now;
+      __u64 nexttemp=ip_stats_pointer->next_update;
+      __u64 btimetemp=(*unblock_time_value) * NANO_TO_SEC;
+      bpf_map_update_elem(&now_cnt, &now_cnt_key, &nowtemp, BPF_ANY);
+      bpf_map_update_elem(&next_cnt, &next_cnt_key, &nexttemp, BPF_ANY);
+      bpf_map_update_elem(&btime_cnt, &btime_cnt_key, &btimetemp, BPF_ANY);
+      if (now - ip_stats_pointer->next_update >= (*unblock_time_value)*NANO_TO_SEC) {
         bpf_map_delete_elem(&ip_blacklist_t, &saddr);
         struct ip_stats new_ip_stats={0};
         new_ip_stats.pps = 1;
@@ -370,14 +362,12 @@ int firewall(struct xdp_md *ctx) {
           __u64 new_pass_cnt_value =*pass_cnt_value + 1;
           bpf_map_update_elem(&pass_cnt, &pass_cnt_key, &new_pass_cnt_value, BPF_ANY);
         }
-        /*
         __u32 temp_cnt_key=11;
         __u64 *temp_cnt_value = bpf_map_lookup_elem(&temp_cnt, &temp_cnt_key);
         if (temp_cnt_value) {
           __u64 new_temp_cnt_value =*temp_cnt_value + 1;
           bpf_map_update_elem(&temp_cnt, &temp_cnt_key, &new_temp_cnt_value, BPF_ANY);
         }
-        */
         return XDP_PASS;
       }
     } else {
@@ -395,17 +385,17 @@ int firewall(struct xdp_md *ctx) {
     return XDP_DROP;
   }
   struct ip_stats new_ip_stats={0};
-  if (ip_stats_pointer) { //如果已经有记录
-    if (now > ip_stats_pointer->next_update) {  //如果已经过了更新时间,则重新计数
+  if (ip_stats_pointer) {
+    if (now > ip_stats_pointer->next_update) {
       new_ip_stats.pps = 1;
       new_ip_stats.bps = pkt_len;
       new_ip_stats.next_update = now + NANO_TO_SEC;
-    } else {  //如果还没到更新时间，则累加
+    } else {
       new_ip_stats.pps = ip_stats_pointer->pps + 1;
       new_ip_stats.bps = ip_stats_pointer->bps + pkt_len;
       new_ip_stats.next_update = ip_stats_pointer->next_update;
     }
-  } else {  //如果没有记录
+  } else {
     new_ip_stats.pps = 1;
     new_ip_stats.bps = pkt_len;
     new_ip_stats.next_update = now + NANO_TO_SEC;
@@ -428,7 +418,7 @@ int firewall(struct xdp_md *ctx) {
     limit_bps = *bps_value;
   }
 
-  if (ip_stats_pointer->pps > limit_pps || ip_stats_pointer->bps > limit_bps) { //如果pps或bps超过阈值
+  if (ip_stats_pointer->pps > limit_pps || ip_stats_pointer->bps > limit_bps) {
     __u32 value=1;
     bpf_map_update_elem(&ip_blacklist_t, &saddr, &value, BPF_ANY);
     drop_cnt_value = bpf_map_lookup_elem(&drop_cnt, &drop_cnt_key);
@@ -437,7 +427,7 @@ int firewall(struct xdp_md *ctx) {
       bpf_map_update_elem(&drop_cnt, &drop_cnt_key, &new_drop_cnt_value, BPF_ANY);
     }
     return XDP_DROP;
-  } 
+  }
 
   struct tcphdr *tcph = NULL;
   struct udphdr *udph = NULL;
@@ -446,32 +436,28 @@ int firewall(struct xdp_md *ctx) {
     case IPPROTO_TCP:
       tcph = data;
       if (data  + sizeof(*tcph) > data_end) {
-        /*
         wrong_cnt_value = bpf_map_lookup_elem(&wrong_cnt, &wrong_cnt_key);
         if (wrong_cnt_value) {
           __u64 new_wrong_cnt_value =*wrong_cnt_value + 1;
           bpf_map_update_elem(&wrong_cnt, &wrong_cnt_key, &new_wrong_cnt_value, BPF_ANY);
         }
-        */
         return XDP_DROP;
       }
       break;
     case IPPROTO_UDP:
       udph = data;
       if (data  + sizeof(*udph) > data_end) {
-        /*
         wrong_cnt_value = bpf_map_lookup_elem(&wrong_cnt, &wrong_cnt_key);
         if (wrong_cnt_value) {
           __u64 new_wrong_cnt_value =*wrong_cnt_value + 1;
           bpf_map_update_elem(&wrong_cnt, &wrong_cnt_key, &new_wrong_cnt_value, BPF_ANY);
         }
-        */
         return XDP_DROP;
       }
   }
 
 
-  if (tcph  && (tcph->syn == 1) && (tcph->ack == 0)) {  //如果是syn请求包
+  if (tcph  && (tcph->syn == 1) && (tcph->ack == 0)) {
     __u16 dport = ntohs(tcph->dest);
     struct syn_stats* syn_stats_pointer= NULL;
     syn_stats_pointer=bpf_map_lookup_elem(&syn_counter, &dport);
