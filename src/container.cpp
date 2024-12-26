@@ -25,10 +25,20 @@ container_manager::container_client::container_client() : dockerd_client("unix:/
 
 std::string container_manager::container_client::list_all_containers()
 {
-  std::stringstream resp_stream;
-  auto response = dockerd_client.Get("/containers/json");
-  resp_stream << response->body;
-  return resp_stream.str();
+    try
+    {
+        auto response = dockerd_client.Get("/containers/json");
+        if (!response || response->status_code != 200)
+        {
+            throw std::runtime_error("Failed to get containers: " + std::to_string(response->status_code));
+        }
+        return response->body;
+    }
+    catch (const std::exception& e)
+    {
+        spdlog::error("Error in list_all_containers: {}", e.what());
+        return "{}"; // 返回空 JSON 对象
+    }
 }
 
 std::string container_manager::container_client::list_all_process_running_in_container(const std::string& container_id)
@@ -41,12 +51,48 @@ std::string container_manager::container_client::list_all_process_running_in_con
 
 std::string container_manager::container_client::inspect_container(const std::string& container_id)
 {
-  std::stringstream resp_stream;
-  auto response = dockerd_client.Get("/containers/" + container_id + "/json");
-  resp_stream << response->body;
-  return resp_stream.str();
+    try
+    {
+        auto response = dockerd_client.Get("/containers/" + container_id + "/json");
+        if (!response || response->status_code != 200)
+        {
+            throw std::runtime_error("Failed to inspect container: " + std::to_string(response->status_code));
+        }
+        return response->body;
+    }
+    catch (const std::exception& e)
+    {
+        spdlog::error("Error in inspect_container: {}", e.what());
+        return "{}"; // 返回空 JSON 对象
+    }
 }
+// 提取的 JSON 解析函数
+container_info parse_container_info(const nlohmann::json& j)
+{
+    container_info info;
+    info.id = j["Id"].get<std::string>();
+    info.name = j["Names"][0].get<std::string>();
+    info.status = container_status_from_str(j["State"].get<std::string>());
+    return info;
+}
+void container_manager::update_container_map_data(void)
+{
+    try
+    {
+        auto response = client.list_all_containers();
+        nlohmann::json containers_json = nlohmann::json::parse(response);
 
+        for (const auto& c : containers_json)
+        {
+            container_info info = parse_container_info(c);
+            // 处理进程信息...
+        }
+    }
+    catch (const std::exception& e)
+    {
+        spdlog::error("Error in update_container_map_data: {}", e.what());
+    }
+}
 container_info container_manager::container_client::get_os_container_info()
 {
   try
