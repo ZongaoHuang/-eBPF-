@@ -72,7 +72,7 @@ func main() {
 	fmt.Printf("ArpFlag: %d\n", config.ArpFlag)
 	fmt.Println("ARP Table Entries:")
 	for i, entry := range config.ArpTable {
-		fmt.Printf("%d:\tIP: %s\tMAC: %s\n", i, entry.Ip, entry.Mac)
+		fmt.Printf("%3d:\tIP: %15s\tMAC: %s\n", i, entry.Ip, entry.Mac)
 	}
 	//创建eBPF系统实例，并加载编译好的eBPF程序。
 	bpf := goebpf.NewDefaultEbpfSystem()
@@ -166,7 +166,7 @@ func main() {
 
 			fatalError("无法插入 eBPF map: %v", err)
 		}
-		fmt.Printf("Ipv4BlacklistPerm[%d]: %d----%x\n", i, ipu32, ipu32)
+		//fmt.Printf("Ipv4BlacklistPerm[%d]: %d----%x\n", i, ipu32, ipu32)
 	}
 	arp_flag := bpf.GetMapByName("arp_flag")
 	if arp_flag == nil {
@@ -219,61 +219,63 @@ func main() {
 			fatalError("数据无法插入 eBPF map: %v", err)
 		}
 	}
-	wrong_cnt := bpf.GetMapByName("wrong_cnt")
-	if wrong_cnt == nil {
-		fatalError("eBPF map 类型的 'wrong_cnt' 找不到")
-	} else {
-		// 初始化 wrong_cnt 为 0
-		value := uint64(0)
-		err := wrong_cnt.Insert(10, value)
-		if err != nil {
-			fatalError("数据无法插入 eBPF map: %v", err)
+	/*
+		wrong_cnt := bpf.GetMapByName("wrong_cnt")
+		if wrong_cnt == nil {
+			fatalError("eBPF map 类型的 'wrong_cnt' 找不到")
+		} else {
+			// 初始化 wrong_cnt 为 0
+			value := uint64(0)
+			err := wrong_cnt.Insert(10, value)
+			if err != nil {
+				fatalError("数据无法插入 eBPF map: %v", err)
+			}
 		}
-	}
-	temp_cnt := bpf.GetMapByName("temp_cnt")
-	if temp_cnt == nil {
-		fatalError("eBPF map 类型的 'temp_cnt' 找不到")
-	} else {
-		// 初始化 temp_cnt 为 0
-		value := uint64(0)
-		err := temp_cnt.Insert(11, value)
-		if err != nil {
-			fatalError("数据无法插入 eBPF map: %v", err)
+		temp_cnt := bpf.GetMapByName("temp_cnt")
+		if temp_cnt == nil {
+			fatalError("eBPF map 类型的 'temp_cnt' 找不到")
+		} else {
+			// 初始化 temp_cnt 为 0
+			value := uint64(0)
+			err := temp_cnt.Insert(11, value)
+			if err != nil {
+				fatalError("数据无法插入 eBPF map: %v", err)
+			}
 		}
-	}
-	now_cnt := bpf.GetMapByName("now_cnt")
-	if now_cnt == nil {
-		fatalError("eBPF map 类型的 'now_cnt' 找不到")
-	} else {
-		// 初始化 now_cnt 为 0
-		value := uint64(0)
-		err := now_cnt.Insert(12, value)
-		if err != nil {
-			fatalError("数据无法插入 eBPF map: %v", err)
+		now_cnt := bpf.GetMapByName("now_cnt")
+		if now_cnt == nil {
+			fatalError("eBPF map 类型的 'now_cnt' 找不到")
+		} else {
+			// 初始化 now_cnt 为 0
+			value := uint64(0)
+			err := now_cnt.Insert(12, value)
+			if err != nil {
+				fatalError("数据无法插入 eBPF map: %v", err)
+			}
 		}
-	}
-	next_cnt := bpf.GetMapByName("next_cnt")
-	if next_cnt == nil {
-		fatalError("eBPF map 类型的 'next_cnt' 找不到")
-	} else {
-		// 初始化 next_cnt 为 0
-		value := uint64(0)
-		err := next_cnt.Insert(13, value)
-		if err != nil {
-			fatalError("数据无法插入 eBPF map: %v", err)
+		next_cnt := bpf.GetMapByName("next_cnt")
+		if next_cnt == nil {
+			fatalError("eBPF map 类型的 'next_cnt' 找不到")
+		} else {
+			// 初始化 next_cnt 为 0
+			value := uint64(0)
+			err := next_cnt.Insert(13, value)
+			if err != nil {
+				fatalError("数据无法插入 eBPF map: %v", err)
+			}
 		}
-	}
-	btime_cnt := bpf.GetMapByName("btime_cnt")
-	if btime_cnt == nil {
-		fatalError("eBPF map 类型的 'btime_cnt' 找不到")
-	} else {
-		// 初始化 btime_cnt 为 0
-		value := uint64(0)
-		err := btime_cnt.Insert(14, value)
-		if err != nil {
-			fatalError("数据无法插入 eBPF map: %v", err)
+		btime_cnt := bpf.GetMapByName("btime_cnt")
+		if btime_cnt == nil {
+			fatalError("eBPF map 类型的 'btime_cnt' 找不到")
+		} else {
+			// 初始化 btime_cnt 为 0
+			value := uint64(0)
+			err := btime_cnt.Insert(14, value)
+			if err != nil {
+				fatalError("数据无法插入 eBPF map: %v", err)
+			}
 		}
-	}
+	*/
 	//获取名为'firewall'的XDP程序
 	xdp := bpf.GetProgramByName("firewall")
 	if xdp == nil {
@@ -297,11 +299,11 @@ func main() {
 
 	// 用户输入通道
 	reader := bufio.NewReader(os.Stdin)
-	longString := "\n1. PPS(每秒数据包数)\t2. BPS(每秒字节数)\t3. Ipv4BlacklistTemp(临时ip黑名单)\n" +
-		"4. Ipv4BlacklistPerm(永久ip黑名单)\t5. BlockFlag(是否永久封禁临时黑名单中的ip,0表示不永久,1表示永久)\n" +
-		"6. UnBlockTime(不永久封禁时,临时ip的解封时间(秒))\t7. Print(打印信息到文件)\n" +
-		"8. SYNPS(每秒SYN请求数)\t9. UDPPS(每秒UDP包数)\t10. ArpFlag(是否启用ip-mac映射表,0表示不启用,1表示启用)\n" +
-		"11. ArpTable(配置ip-mac映射表)\t12. Statistics(统计丢弃包和通过包数目)\t13. Quit(退出修改)\n"
+	longString := "\n1. PPS(每秒数据包数)                  2. BPS(每秒字节数)                        3. Ipv4BlacklistTemp(临时ip黑名单)\n" +
+		"4. Ipv4BlacklistPerm(永久ip黑名单)    5. BlockFlag(是否永久封禁临时黑名单中的ip,0表示不永久,1表示永久)\n" +
+		"6. UnBlockTime(不永久封禁时,临时ip的解封时间(秒))                                7. Print(打印信息到文件)\n" +
+		"8. SYNPS(每秒SYN请求数)               9. UDPPS(每秒UDP包数)                     10. ArpFlag(是否启用ip-mac映射表,0表示不启用,1表示启用)\n" +
+		"11. ArpTable(配置ip-mac映射表)        12. Statistics(统计丢弃包和通过包数目)     13. Quit(退出修改)\n"
 	for {
 		fmt.Print("按'e'键修改配置，按'q'键退出程序\n")
 		text, _ := reader.ReadString('\n')
@@ -333,7 +335,7 @@ func main() {
 						continue
 					}
 					config.PPS = uint64(newPPS)
-					err2 := config_pps.Insert(1, config.PPS)
+					err2 := config_pps.Upsert(1, config.PPS)
 					if err2 != nil {
 						fatalError("Unable to Insert into eBPF map: %v", err2)
 					}
@@ -353,7 +355,7 @@ func main() {
 						continue
 					}
 					config.BPS = uint64(newBPS)
-					err2 := config_bps.Insert(2, config.BPS)
+					err2 := config_bps.Upsert(2, config.BPS)
 					if err2 != nil {
 						fatalError("Unable to Insert into eBPF map: %v", err2)
 					}
@@ -496,7 +498,7 @@ func main() {
 						continue
 					}
 					config.BlockFlag = uint64(newBlockFlag)
-					err2 := block_time.Insert(3, config.BlockFlag)
+					err2 := block_time.Upsert(3, config.BlockFlag)
 					if err2 != nil {
 						fatalError("Unable to Insert into eBPF map: %v", err2)
 					}
@@ -515,15 +517,17 @@ func main() {
 						continue
 					}
 					config.UnBlockTime = uint64(newUnBlockTime)
-					err2 := un_block_time.Insert(4, config.UnBlockTime)
+					err2 := un_block_time.Upsert(4, config.UnBlockTime)
 					if err2 != nil {
 						fatalError("Unable to Insert into eBPF map: %v", err2)
 					}
-					tempNum, err_temp := un_block_time.Lookup(4)
-					if err_temp != nil {
-						fmt.Println("Unable to Lookup from eBPF map: %v", err_temp)
-					}
-					fmt.Printf("\n解封时间:%d\n", tempNum)
+					/*
+						tempNum, err_temp := un_block_time.Lookup(4)
+						if err_temp != nil {
+							fmt.Println("Unable to Lookup from eBPF map: %v", err_temp)
+						}
+						fmt.Printf("\n解封时间:%d\n", tempNum)
+					*/
 				}
 			} else if num == 7 {
 				fmt.Print("请输入要打印的文件名(不输入请直接按回车,并采用默认文件名xdp_fw.log):")
@@ -599,20 +603,23 @@ func main() {
 				if errm2 != nil {
 					fatalError("Unable to Lookup from eBPF map: %v", errm2)
 				}
-				wrongCnt, errm3 := wrong_cnt.Lookup(uint32(10))
-				if errm3 != nil {
-					fatalError("Unable to Lookup from eBPF map: %v", errm3)
-				}
+				/*
+					wrongCnt, errm3 := wrong_cnt.Lookup(uint32(10))
+					if errm3 != nil {
+						fatalError("Unable to Lookup from eBPF map: %v", errm3)
+					}
+				*/
 				var num_dropcnt uint64
 				num_dropcnt = binary.LittleEndian.Uint64(dropCnt)
 				var num_passcnt uint64
 				num_passcnt = binary.LittleEndian.Uint64(passCnt)
-				var num_wrongcnt uint64
-				num_wrongcnt = binary.LittleEndian.Uint64(wrongCnt)
-
+				/*
+					var num_wrongcnt uint64
+					num_wrongcnt = binary.LittleEndian.Uint64(wrongCnt)
+				*/
 				fmt.Fprintf(file, "\n丢弃包数目:%d\n", num_dropcnt)
 				fmt.Fprintf(file, "通过包数目:%d\n", num_passcnt)
-				fmt.Fprintf(file, "错误包数目:%d\n", num_wrongcnt)
+				//fmt.Fprintf(file, "错误包数目:%d\n", num_wrongcnt)
 
 				fmt.Fprintf(file, "\n")
 				fmt.Println("打印成功")
@@ -630,7 +637,7 @@ func main() {
 						continue
 					}
 					config.SYNPS = uint64(newSYNPS)
-					err2 := config_syn_count.Insert(5, config.SYNPS)
+					err2 := config_syn_count.Upsert(5, config.SYNPS)
 					if err2 != nil {
 						fatalError("Unable to Insert into eBPF map: %v", err2)
 					}
@@ -649,7 +656,7 @@ func main() {
 						continue
 					}
 					config.UDPPS = uint64(newUDPPS)
-					err2 := config_udp_count.Insert(6, config.UDPPS)
+					err2 := config_udp_count.Upsert(6, config.UDPPS)
 					if err2 != nil {
 						fatalError("Unable to Insert into eBPF map: %v", err2)
 					}
@@ -668,7 +675,7 @@ func main() {
 						continue
 					}
 					config.ArpFlag = uint64(newArpFlag)
-					err2 := arp_flag.Insert(7, config.ArpFlag)
+					err2 := arp_flag.Upsert(7, config.ArpFlag)
 					if err2 != nil {
 						fatalError("Unable to Insert into eBPF map: %v", err2)
 					}
@@ -676,7 +683,7 @@ func main() {
 			} else if num == 11 {
 				fmt.Printf("当前ArpTable(ip-mac映射表)的内容是:\n")
 				for i, entry := range config.ArpTable {
-					fmt.Printf("%d:\tIP: %s\tMAC: %s\n", i, entry.Ip, entry.Mac)
+					fmt.Printf("%3d:\tIP: %15s\tMAC: %s\n", i, entry.Ip, entry.Mac)
 				}
 				fmt.Printf("\n请输入要删除的ARP表项下标(不输入请直接按回车):")
 				newInput2, _ := reader.ReadString('\n')
@@ -713,7 +720,7 @@ func main() {
 						continue
 					}
 					config.ArpTable = append(config.ArpTable, ARPEntry{Ip: newArpEntry[0], Mac: newArpEntry[1]})
-					err2 := arp_table.Insert(ipu32, mac)
+					err2 := arp_table.Upsert(ipu32, mac)
 					if err2 != nil {
 						fatalError("Unable to Insert into eBPF map: %v", err2)
 					}
@@ -727,47 +734,53 @@ func main() {
 				if errm2 != nil {
 					fatalError("Unable to Lookup from eBPF map: %v", errm2)
 				}
-				wrongCnt, errm3 := wrong_cnt.Lookup(uint32(10))
-				if errm3 != nil {
-					fatalError("Unable to Lookup from eBPF map: %v", errm3)
-				}
-				tempCnt, errm4 := temp_cnt.Lookup(uint32(11))
-				if errm4 != nil {
-					fatalError("Unable to Lookup from eBPF map: %v", errm4)
-				}
-				nowCnt, errm5 := now_cnt.Lookup(uint32(12))
-				if errm5 != nil {
-					fatalError("Unable to Lookup from eBPF map: %v", errm5)
-				}
-				nextCnt, errm6 := next_cnt.Lookup(uint32(13))
-				if errm6 != nil {
-					fatalError("Unable to Lookup from eBPF map: %v", errm6)
-				}
-				btimeCnt, errm7 := btime_cnt.Lookup(uint32(14))
-				if errm7 != nil {
-					fatalError("Unable to Lookup from eBPF map: %v", errm7)
-				}
+				/*
+					wrongCnt, errm3 := wrong_cnt.Lookup(uint32(10))
+					if errm3 != nil {
+						fatalError("Unable to Lookup from eBPF map: %v", errm3)
+					}
+					tempCnt, errm4 := temp_cnt.Lookup(uint32(11))
+					if errm4 != nil {
+						fatalError("Unable to Lookup from eBPF map: %v", errm4)
+					}
+					nowCnt, errm5 := now_cnt.Lookup(uint32(12))
+					if errm5 != nil {
+						fatalError("Unable to Lookup from eBPF map: %v", errm5)
+					}
+					nextCnt, errm6 := next_cnt.Lookup(uint32(13))
+					if errm6 != nil {
+						fatalError("Unable to Lookup from eBPF map: %v", errm6)
+					}
+					btimeCnt, errm7 := btime_cnt.Lookup(uint32(14))
+					if errm7 != nil {
+						fatalError("Unable to Lookup from eBPF map: %v", errm7)
+					}
+				*/
 				var num_dropcnt uint64
 				num_dropcnt = binary.LittleEndian.Uint64(dropCnt)
 				var num_passcnt uint64
 				num_passcnt = binary.LittleEndian.Uint64(passCnt)
-				var num_wrongcnt uint64
-				num_wrongcnt = binary.LittleEndian.Uint64(wrongCnt)
-				var num_tempcnt uint64
-				num_tempcnt = binary.LittleEndian.Uint64(tempCnt)
-				var num_nowcnt uint64
-				num_nowcnt = binary.LittleEndian.Uint64(nowCnt)
-				var num_nextcnt uint64
-				num_nextcnt = binary.LittleEndian.Uint64(nextCnt)
-				var num_btimecnt uint64
-				num_btimecnt = binary.LittleEndian.Uint64(btimeCnt)
+				/*
+					var num_wrongcnt uint64
+					num_wrongcnt = binary.LittleEndian.Uint64(wrongCnt)
+					var num_tempcnt uint64
+					num_tempcnt = binary.LittleEndian.Uint64(tempCnt)
+					var num_nowcnt uint64
+					num_nowcnt = binary.LittleEndian.Uint64(nowCnt)
+					var num_nextcnt uint64
+					num_nextcnt = binary.LittleEndian.Uint64(nextCnt)
+					var num_btimecnt uint64
+					num_btimecnt = binary.LittleEndian.Uint64(btimeCnt)
+				*/
 				fmt.Printf("\n丢弃包数目:%d\n", num_dropcnt)
 				fmt.Printf("通过包数目:%d\n", num_passcnt)
-				fmt.Printf("错误包数目:%d\n", num_wrongcnt)
-				fmt.Printf("解禁次数:%d\n", num_tempcnt)
-				fmt.Printf("当前时间:%d\n", num_nowcnt)
-				fmt.Printf("下一次时间:%d\n", num_nextcnt)
-				fmt.Printf("封禁时间:%d\n", num_btimecnt)
+				/*
+					fmt.Printf("错误包数目:%d\n", num_wrongcnt)
+					fmt.Printf("解禁次数:%d\n", num_tempcnt)
+					fmt.Printf("当前时间:%d\n", num_nowcnt)
+					fmt.Printf("下一次时间:%d\n", num_nextcnt)
+					fmt.Printf("封禁时间:%d\n", num_btimecnt)
+				*/
 			} else {
 				fmt.Print("\n退出修改\n")
 			}
