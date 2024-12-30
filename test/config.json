@@ -32,6 +32,16 @@
             "args": []
         },
         {
+            "name": "sigsnoop",
+            "export_handlers": [],
+            "args": []
+        },
+        {
+            "name": "bindsnoop",
+            "export_handlers": [],
+            "args": []
+        },
+        {
             "name": "mountsnoop",
             "export_handlers": [],
             "args": []
@@ -77,6 +87,12 @@
             "type": "syscall",
             "trigger": "bpf",
             "err_msg": "err_msg bpf"
+        },
+        {
+            "rule_name": "file...",
+            "type": "file",
+            "trigger": "open",
+            "err_msg": "err_msg file"
         }
     ],
     "seccomp_data": [
@@ -86,6 +102,15 @@
                 "read",
                 "write",
                 "open"
+            ]
+        },
+        {
+            "container_id": "c8fe57314834",
+            "allow_syscall": [
+                "read",
+                "write",
+                "open",
+                "connect"
             ]
         }
     ]

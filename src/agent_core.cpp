@@ -8,8 +8,6 @@
 #include "agent/tracker_integrations.h"
 #include "agent/tracker_manager.h"
 
-#include <unordered_map>
-
 agent_core::agent_core(agent_config_data& config)
     : core_config(config),
       core_prometheus_server(config.prometheus_listening_address, core_container_manager)
@@ -149,38 +147,78 @@ void agent_core::stop_tracker(std::size_t tracker_id)
 
 std::optional<std::size_t> agent_core::start_tracker(const tracker_config_data& config)
 {
-    spdlog::info("{} tracker is starting...", config.name);
-
-    // 使用 unordered_map 替代多个 if-else 语句
-    static const std::unordered_map<std::string, std::function<std::unique_ptr<tracker>(const tracker_config_data&)>> tracker_map = {
-        {"files", [](const tracker_config_data& cfg) { return create_default_tracker<files_tracker>(cfg); }},
-        {"process", [](const tracker_config_data& cfg) { return create_process_tracker_with_container_tracking(cfg); }},
-        {"syscall", [](const tracker_config_data& cfg) { return create_default_tracker_with_sec_analyzer<syscall_tracker, syscall_rule_checker>(cfg); }},
-        {"tcpconnect", [](const tracker_config_data& cfg) { return create_default_tracker<tcp_tracker>(cfg); }},
-        {"capable", [](const tracker_config_data& cfg) { return create_default_tracker<capable_tracker>(cfg); }},
-        {"memleak", [](const tracker_config_data& cfg) { return create_default_tracker<memleak_tracker>(cfg); }},
-        {"tcpconnlat", [](const tracker_config_data& cfg) { return create_default_tracker<tcpconnlat_tracker>(cfg); }},
-        {"mountsnoop", [](const tracker_config_data& cfg) { return create_default_tracker<mountsnoop_tracker>(cfg); }},
-        {"sigsnoop", [](const tracker_config_data& cfg) { return create_default_tracker<sigsnoop_tracker>(cfg); }},
-        {"bindsnoop", [](const tracker_config_data& cfg) { return create_default_tracker<bindsnoop_tracker>(cfg); }},
-        {"opensnoop", [](const tracker_config_data& cfg) { return create_default_tracker<opensnoop_tracker>(cfg); }},
-        {"oomkill", [](const tracker_config_data& cfg) { return create_default_tracker<oomkill_tracker>(cfg); }},
-        {"tcprtt", [](const tracker_config_data& cfg) { return create_default_tracker<tcprtt_tracker>(cfg); }},
-        {"hotupdate", [](const tracker_config_data& cfg) { return create_default_tracker<hotupdate_tracker>(cfg); }},
-        {"syscount", [](const tracker_config_data& cfg) { return std::nullopt; }},
-        {"funclatency", [](const tracker_config_data& cfg) { return create_default_tracker<funclatency_tracker>(cfg); }},
-    };
-
-    auto it = tracker_map.find(config.name);
-    if (it != tracker_map.end())
-    {
-        return core_tracker_manager.start_tracker(it->second(config), config.name);
-    }
-    else
-    {
-        spdlog::error("unknown tracker name: {}", config.name);
-        return std::nullopt;
-    }
+  spdlog::info("{} tracker is starting...", config.name);
+  if (config.name == "files")
+  {
+    return core_tracker_manager.start_tracker(create_default_tracker<files_tracker>(config), config.name);
+  }
+  else if (config.name == "process")
+  {
+    return core_tracker_manager.start_tracker(create_process_tracker_with_container_tracking(config), config.name);
+  }
+  else if (config.name == "syscall")
+  {
+    return core_tracker_manager.start_tracker(
+        create_default_tracker_with_sec_analyzer<syscall_tracker, syscall_rule_checker>(config), config.name);
+  }
+  else if (config.name == "tcpconnect")
+  {
+    return core_tracker_manager.start_tracker(create_default_tracker<tcp_tracker>(config), config.name);
+  }
+  else if (config.name == "capable")
+  {
+    return core_tracker_manager.start_tracker(create_default_tracker<capable_tracker>(config), config.name);
+  }
+  else if (config.name == "memleak")
+  {
+    return core_tracker_manager.start_tracker(create_default_tracker<memleak_tracker>(config), config.name);
+  }
+  else if (config.name == "tcpconnlat")
+  {
+    return core_tracker_manager.start_tracker(create_default_tracker<tcpconnlat_tracker>(config), config.name);
+  }
+  else if (config.name == "mountsnoop")
+  {
+    return core_tracker_manager.start_tracker(create_default_tracker<mountsnoop_tracker>(config), config.name);
+  }
+  else if (config.name == "sigsnoop")
+  {
+    return core_tracker_manager.start_tracker(create_default_tracker<sigsnoop_tracker>(config), config.name);
+  }
+  else if (config.name == "bindsnoop")
+  {
+    return core_tracker_manager.start_tracker(create_default_tracker<bindsnoop_tracker>(config), config.name);
+  }
+  else if (config.name == "opensnoop")
+  {
+    return core_tracker_manager.start_tracker(create_default_tracker<opensnoop_tracker>(config), config.name);
+  }
+  else if (config.name == "oomkill")
+  {
+    return core_tracker_manager.start_tracker(create_default_tracker<oomkill_tracker>(config), config.name);
+  }
+  else if (config.name == "tcprtt")
+  {
+    return core_tracker_manager.start_tracker(create_default_tracker<tcprtt_tracker>(config), config.name);
+  }
+  else if (config.name == "hotupdate")
+  {
+    return core_tracker_manager.start_tracker(create_default_tracker<hotupdate_tracker>(config), config.name);
+  }
+  else if (config.name == "syscount")
+  {
+    // return core_tracker_manager.start_tracker(create_default_tracker<syscount_tracker>(config), config.name);
+    return std::nullopt;
+  }
+  else if (config.name == "funclatency")
+  {
+    return core_tracker_manager.start_tracker(create_default_tracker<funclatency_tracker>(config), config.name);
+  }
+  else
+  {
+    spdlog::error("unknown tracker name: {}", config.name);
+    return std::nullopt;
+  }
 }
 
 void agent_core::start_trackers(void)

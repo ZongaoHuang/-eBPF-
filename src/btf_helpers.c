@@ -36,30 +36,18 @@ static struct os_info *get_os_info()
   FILE *f;
 
   if (uname(&u) == -1)
-  {
-    perror("uname failed");
     return NULL;
-  }
 
   f = fopen("/etc/os-release", "r");
   if (!f)
-  {
-    perror("Failed to open /etc/os-release");
     return NULL;
-  }
 
   info = calloc(1, sizeof(*info));
   if (!info)
-  {
-    perror("Failed to allocate memory for os_info");
-    fclose(f);
-    return NULL;
-  }
+    goto out;
 
-  strncpy(info->kernel_release, u.release, FIELD_LEN - 1);
-  info->kernel_release[FIELD_LEN - 1] = '\0';
-  strncpy(info->arch, u.machine, FIELD_LEN - 1);
-  info->arch[FIELD_LEN - 1] = '\0';
+  strncpy(info->kernel_release, u.release, FIELD_LEN);
+  strncpy(info->arch, u.machine, FIELD_LEN);
 
   while ((read = getline(&line, &len, f)) != -1)
   {
@@ -69,13 +57,15 @@ static struct os_info *get_os_info()
     if (sscanf(line, VERSION_FMT, info->version) == 1)
     {
       /* remove '"' suffix */
-      info->version[strlen(info->version) - 1] = '\0';
+      info->version[strlen(info->version) - 1] = 0;
       continue;
     }
   }
 
+out:
   free(line);
   fclose(f);
+
   return info;
 }
 
@@ -98,17 +88,11 @@ static int inflate_gz(unsigned char *src, int src_size, unsigned char **dst, int
 
   ret = inflateInit2(&strm, 16 + MAX_WBITS);
   if (ret != Z_OK)
-  {
-    fprintf(stderr, "inflateInit2 failed: %d\n", ret);
     return -EINVAL;
-  }
 
   *dst = malloc(size);
   if (!*dst)
-  {
-    fprintf(stderr, "Failed to allocate memory for destination buffer\n");
     return -ENOMEM;
-  }
 
   strm.next_in = src;
   strm.avail_in = src_size;

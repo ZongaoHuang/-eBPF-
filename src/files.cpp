@@ -8,62 +8,52 @@ using json = nlohmann::json;
 
 void files_tracker::prometheus_event_handler::report_prometheus_event(const struct files_event &e)
 {
-    try
-    {
-        for (size_t i = 0; i < e.rows; i++)
-        {
-            auto pid = e.values[i].pid;
-            auto container_info = container_manager_ref.get_container_info_for_pid(pid);
-            auto pid_str = std::to_string(e.values[i].pid);
-            auto file_name_str = std::string(e.values[i].filename);
-            auto comm_str = std::string(e.values[i].comm);
-            auto type_str = std::to_string(e.values[i].type);
+  for (size_t i = 0; i < e.rows; i++)
+  {
+    auto pid = e.values[i].pid;
+    auto container_info = container_manager_ref.get_container_info_for_pid(pid);
+    auto pid_str = std::to_string(e.values[i].pid);
+    auto file_name_str = std::string(e.values[i].filename);
+    auto comm_str = std::string(e.values[i].comm);
+    auto type_str = std::to_string(e.values[i].type);
 
-            agent_files_write_counter
-                .Add({ { "type", type_str },
-                       { "filename", file_name_str },
-                       { "comm", comm_str },
-                       { "container_id", container_info.id },
-                       { "container_name", container_info.name },
-                       { "pid", pid_str } })
-                .Increment(static_cast<double>(e.values[i].writes));
-
-            agent_files_read_counter
-                .Add({
-                    { "comm", comm_str },
-                    { "container_id", container_info.id },
-                    { "container_name", container_info.name },
-                    { "filename", file_name_str },
-                    { "pid", pid_str },
-                    { "type", type_str },
-                })
-                .Increment(static_cast<double>(e.values[i].reads));
-
-            agent_files_write_bytes
-                .Add({ { "type", type_str },
-                       { "container_id", container_info.id },
-                       { "container_name", container_info.name },
-                       { "filename", file_name_str },
-                       { "comm", comm_str },
-                       { "pid", pid_str } })
-                .Increment(static_cast<double>(e.values[i].write_bytes));
-
-            agent_files_read_bytes
-                .Add({
-                    { "comm", comm_str },
-                    { "container_id", container_info.id },
-                    { "container_name", container_info.name },
-                    { "filename", file_name_str },
-                    { "pid", pid_str },
-                    { "type", type_str },
-                })
-                .Increment(static_cast<double>(e.values[i].read_bytes));
-        }
-    }
-    catch (const std::exception& e)
-    {
-        spdlog::error("Error in report_prometheus_event: {}", e.what());
-    }
+    agent_files_write_counter
+        .Add({ { "type", type_str },
+               { "filename", file_name_str },
+               { "comm", comm_str },
+               { "container_id", container_info.id },
+               { "container_name", container_info.name },
+               { "pid", pid_str } })
+        .Increment((double)e.values[i].writes);
+    agent_files_read_counter
+        .Add({
+            { "comm", comm_str },
+            { "container_id", container_info.id },
+            { "container_name", container_info.name },
+            { "filename", file_name_str },
+            { "pid", pid_str },
+            { "type", type_str },
+        })
+        .Increment((double)e.values[i].reads);
+    agent_files_write_bytes
+        .Add({ { "type", type_str },
+               { "container_id", container_info.id },
+               { "container_name", container_info.name },
+               { "filename", file_name_str },
+               { "comm", comm_str },
+               { "pid", pid_str } })
+        .Increment((double)e.values[i].write_bytes);
+    agent_files_read_bytes
+        .Add({
+            { "comm", comm_str },
+            { "container_id", container_info.id },
+            { "container_name", container_info.name },
+            { "filename", file_name_str },
+            { "pid", pid_str },
+            { "type", type_str },
+        })
+        .Increment((double)e.values[i].read_bytes);
+  }
 }
 
 files_tracker::prometheus_event_handler::prometheus_event_handler(prometheus_server &server)
@@ -127,30 +117,23 @@ void files_tracker::start_tracker()
 
 std::string files_tracker::json_event_handler::to_json(const struct files_event &e)
 {
-    try
-    {
-        json files = { { "type", "process" }, { "time", get_current_time() } };
-        json files_event_json = json::array();
-        for (size_t i = 0; i < e.rows; i++)
-        {
-            files_event_json.push_back({ { "pid", e.values[i].pid },
-                                         { "read_bytes", e.values[i].read_bytes },
-                                         { "reads", e.values[i].reads },
-                                         { "write_bytes", e.values[i].write_bytes },
-                                         { "writes", e.values[i].writes },
-                                         { "comm", e.values[i].comm },
-                                         { "filename", e.values[i].filename },
-                                         { "type", e.values[i].type },
-                                         { "tid", e.values[i].tid } });
-        }
-        files.push_back({ "files", files_event_json });
-        return files.dump();
-    }
-    catch (const std::exception& e)
-    {
-        spdlog::error("Error in to_json: {}", e.what());
-        return "{}"; // 返回空 JSON 对象
-    }
+  std::string res;
+  json files = { { "type", "process" }, { "time", get_current_time() } };
+  json files_event_json = json::array();
+  for (size_t i = 0; i < e.rows; i++)
+  {
+    files_event_json.push_back({ { "pid", e.values[i].pid },
+                                 { "read_bytes", e.values[i].read_bytes },
+                                 { "reads", e.values[i].reads },
+                                 { "write_bytes", e.values[i].write_bytes },
+                                 { "writes", e.values[i].writes },
+                                 { "comm", e.values[i].comm },
+                                 { "filename", e.values[i].filename },
+                                 { "type", e.values[i].type },
+                                 { "tid", e.values[i].tid } });
+  }
+  files.push_back({ "files", files_event_json });
+  return files.dump();
 }
 
 void files_tracker::json_event_printer::handle(tracker_event<files_event> &e)
