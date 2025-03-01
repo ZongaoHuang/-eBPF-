@@ -248,4 +248,5 @@ Agent支持以下操作系统和环境：
 进入决赛并获得三等奖：
 ![Alt text](img/3e21e1300d71ed33d1b769fc57be8e4.png)
 
-### 2024年 OpenHarmony 纯净安全挑战方向华科代表项目
+### 2024年 OpenHarmony 先锋课题
+![73467ecf98d22049945a706a651c4de](https://github.com/user-attachments/assets/25fa462c-43e1-4b46-bf4e-d97325360daf)
