@@ -144,7 +144,7 @@ docker build -t agent-test .
 docker run -it --rm agent-test /bin/bash
 
 # code init
-git clone https://gitlink.org.cn/p4zt3ZfhkI/jyedrqycjc.git && cd jyedrqycjc
+git clone https://github.com/ZongaoHuang/-eBPF-.git && cd -eBPF
 git submodule update --init --recursive
 
 # gitlink的子模块貌似无法更新 请自行去子目录更新
